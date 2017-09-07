@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/arrivals"
+        android:icon="@drawable/ic_flight_land_black_24dp"
+        android:title="@string/menu_arrivals"/>
+
+    <item
+        android:id="@+id/departures"
+        android:icon="@drawable/ic_flight_takeoff_black_24dp"
+        android:title="@string/title_departures"/>
+
+</menu>
