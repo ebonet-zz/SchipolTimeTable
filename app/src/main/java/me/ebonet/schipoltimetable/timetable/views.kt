@@ -1,7 +1,6 @@
-package me.ebonet.schipoltimetable.android
+package me.ebonet.schipoltimetable.timetable
 
 import android.os.Bundle
-import android.support.design.widget.BottomNavigationView
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
@@ -16,83 +15,60 @@ import kotlinx.coroutines.experimental.async
 import me.ebonet.schipoltimetable.*
 import retrofit2.Response
 
-class TimeTableActivity : AppCompatActivity() {
+interface TimeTableView {
+    fun updateFlightList(flights: List<Flight>)
 
+    fun showError(error: String)
+}
+
+class TimeTableActivity : AppCompatActivity(), TimeTableView {
+    override fun updateFlightList(flights: List<Flight>) {
+        runOnUiThread { adapter?.flightList = flights }
+    }
+
+    override fun showError(error: String) {
+        Log.e(TAG, error)
+    }
 
     private var isArrivalShowing = false
 
-    private var api: SchipolApi? = null
+    private var presenter: TimeTablePresenter? = null
 
     private var adapter: TimeTableAdapter? = null
 
-    private val bottomBarListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
-        when (item.itemId) {
-            R.id.arrivals -> {
-                showArrival()
-            }
-            R.id.departures -> {
-                showDeparture()
-            }
-        }
-        true
-    }
-
-    fun showArrival() {
-        if (!isArrivalShowing) {
-            async(CommonPool) {
-                updateList("A")
-                isArrivalShowing = true
-            }
-        }
-    }
-
-    fun showDeparture() {
-        if (isArrivalShowing) {
-            async(CommonPool) {
-                updateList("D")
-                isArrivalShowing = false
-            }
-        }
-    }
-
-    fun toModel(flightResponse: FlightResponse): Flight = Flight(
-            flightResponse.flightName,
-            flightResponse.flightDirection
-    )
-
-    suspend fun updateList(direction: String) { // What if I keep changing them everytime?
-
-        val response: Response<FlightListResponse> = api?.getFlights(direction)?.execute() ?: return
-
-        if (response.isSuccessful) {
-            val flights = response.body()?.flights?.map { toModel(it) } ?: return
-            runOnUiThread { adapter?.flightList = flights }
-        }
+    override fun onDestroy() {
+        presenter = null
+        super.onDestroy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.timetable_activity)
 
-        api = createClient()
-        flightTypeSelector.setOnNavigationItemSelectedListener(bottomBarListener)
+        val api = createClient()
+        presenter = TimeTablePresenter(api, this)
+
+        flightTypeSelector.setOnNavigationItemSelectedListener { changeList(R.id.arrivals == it.itemId) }
         flightListView.layoutManager = LinearLayoutManager(this)
 
         adapter = TimeTableAdapter()
         flightListView.adapter = adapter
+        changeList(true)
 
-        showArrival()
+    }
+
+    private fun changeList(toArrival: Boolean): Boolean {
+        if( toArrival != isArrivalShowing ){
+            if (toArrival) presenter?.showFlightArriving() else presenter?.showFlightsDeparting()
+            isArrivalShowing = toArrival
+        }
+        return true
     }
 
     companion object {
         val TAG = "TimeTableActivity"
     }
 }
-
-data class Flight(
-        val name:String?,
-        val direction: String?
-)
 
 class FlightViewHolder(view:View): RecyclerView.ViewHolder(view) {
     val flightNameView: TextView? = view.findViewById(R.id.flightNameView)

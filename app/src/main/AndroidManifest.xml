@@ -11,7 +11,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".android.TimeTableActivity"
+            android:name=".timetable.TimeTableActivity"
             android:label="@string/title_activity_time_table"
             android:theme="@style/AppTheme">
             <intent-filter>
