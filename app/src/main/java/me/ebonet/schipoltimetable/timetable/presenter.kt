@@ -12,7 +12,9 @@ data class Flight(
         val direction: String?
 )
 
-class TimeTablePresenter(val api: SchipolApi, private val view: TimeTableView) {
+class TimeTablePresenter(private var api: SchipolApi) {
+
+    private var view: TimeTableView = TimeTableView.NOOP
 
     fun showFlightArriving() = updateList("A")
 
@@ -20,6 +22,7 @@ class TimeTablePresenter(val api: SchipolApi, private val view: TimeTableView) {
 
     private fun updateList(direction: String) = async(CommonPool){ // What if I keep changing them everytime?
 
+        view.showLoading()
         val response: Response<FlightListResponse> = api.getFlights(direction).execute() ?: return@async
 
         if (response.isSuccessful) {
@@ -28,6 +31,9 @@ class TimeTablePresenter(val api: SchipolApi, private val view: TimeTableView) {
         } else {
             view.showError("wtf")
         }
+
+        view.hideLoading()
+
     }
 
     private fun networkResponseToModel(flightResponse: FlightResponse): Flight = Flight(
@@ -35,4 +41,11 @@ class TimeTablePresenter(val api: SchipolApi, private val view: TimeTableView) {
             flightResponse.flightDirection
     )
 
+    fun attach(view: TimeTableView) {
+        this.view = view
+    }
+
+    fun detach() {
+        view = TimeTableView.NOOP
+    }
 }
