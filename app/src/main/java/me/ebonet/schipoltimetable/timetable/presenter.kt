@@ -1,5 +1,8 @@
 package me.ebonet.schipoltimetable.timetable
 
+import android.annotation.SuppressLint
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.async
 import me.ebonet.schipoltimetable.FlightListResponse
@@ -11,6 +14,8 @@ data class Flight(
         val name:String?,
         val direction: String?
 )
+
+
 
 class TimeTablePresenter(private var api: SchipolApi) {
 
@@ -26,12 +31,13 @@ class TimeTablePresenter(private var api: SchipolApi) {
 
     }
 
-    private fun updateList(direction: Int) = async(CommonPool){ // What if I keep changing them everytime?
+    private fun updateList(direction: Int) = async(CommonPool) { // What if I keep changing them everytime?
 
         currentView = if (currentView != direction) direction else return@async
 
         view.showLoading()
 
+        // Add proper error handling
         val response: Response<FlightListResponse> = api.getFlights(if (direction==1) "A" else "D").execute() ?: return@async
 
         if (response.isSuccessful) {

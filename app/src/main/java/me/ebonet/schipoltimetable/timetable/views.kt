@@ -1,7 +1,8 @@
 package me.ebonet.schipoltimetable.timetable
 
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.os.PersistableBundle
+import android.os.Parcelable
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
@@ -10,8 +11,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import kotlinx.android.parcel.Parcelize
 import kotlinx.android.synthetic.main.timetable_activity.*
 import me.ebonet.schipoltimetable.*
+
+
+@SuppressLint("ParcelCreator")
+@Parcelize
+data class TimeTablePresenterState(
+        val displayedFlightList:Int
+): Parcelable
 
 interface TimeTableView {
     fun updateFlightList(flights: List<Flight>)
@@ -43,20 +52,24 @@ interface TimeTableView {
 
 class TimeTableActivity : AppCompatActivity(), TimeTableView {
 
-    private var presenter: TimeTablePresenter? = null
+    private val presenter: TimeTablePresenter by lazy { TimeTablePresenter(createClient()) }
 
     private var adapter: TimeTableAdapter? = null
 
+    private val initialState = TimeTablePresenterState(TimeTableView.NO_VIEW)
+
     override fun onDestroy() {
-        presenter?.detach()
+        presenter.detach()
         super.onDestroy()
     }
 
-    override fun onSaveInstanceState(outState: Bundle?) {
+    override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        // TODO: This seems like it could be improved with kotlin
-        outState?.putInt("PRESENTER_STATE", presenter?.getState()?:1)
+        outState.putParcelable(
+                "PRESENTER_STATE",
+                TimeTablePresenterState(presenter.getState())
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,11 +77,8 @@ class TimeTableActivity : AppCompatActivity(), TimeTableView {
 
         setContentView(R.layout.timetable_activity)
 
-        // For DI reasons, this is the best place to create the presenter
-        presenter = TimeTablePresenter(createClient())
-
         flightTypeSelector.setOnNavigationItemSelectedListener {
-            presenter?.listChangeClicked(if (R.id.arrivals == it.itemId) TimeTableView.ARRIVAL else TimeTableView.DEPARTURE)
+            presenter.listChangeClicked(if (R.id.arrivals == it.itemId) TimeTableView.ARRIVAL else TimeTableView.DEPARTURE)
             true
         }
         flightListView.layoutManager = LinearLayoutManager(this)
@@ -76,10 +86,9 @@ class TimeTableActivity : AppCompatActivity(), TimeTableView {
         adapter = TimeTableAdapter()
         flightListView.adapter = adapter
 
-        // TODO: This seems like it could be improved with kotlin
-        val state = savedInstanceState?.getInt("PRESENTER_STATE", 1) ?: 1
+        val state:TimeTablePresenterState = savedInstanceState?.getParcelable("PRESENTER_STATE")?: initialState
 
-        presenter?.attach(this, state)
+        presenter.attach(this, state.displayedFlightList)
     }
 
     companion object {
